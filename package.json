@@ -77,7 +77,8 @@
     "chokidar": "^1.6.1",
     "lodash.map": "^4.6.0",
     "lodash.some": "^4.6.0",
-    "lodash.upperfirst": "^4.3.1"
+    "lodash.upperfirst": "^4.3.1",
+    "yargs": "^6.4.0"
   },
   "pre-commit": [
     "lint",
