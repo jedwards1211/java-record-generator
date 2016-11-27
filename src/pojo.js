@@ -237,6 +237,7 @@ export default function generateRecord(record: Record, options?: Options = {}): 
     'org.andork.model.DefaultProperty',
     'java.util.function.BiConsumer'
   )
+  if (record.generateUpdaters || record.generateProperties) imports.push('java.util.function.Function')
 
   const javadoc = record.javadoc || `/**
  *
