@@ -1,8 +1,11 @@
 {
-  "name": "es2015-library-skeleton",
-  "version": "3.0.0",
-  "description": "my personal skeleton for ES2015 library NPM packages",
+  "name": "java-record-generator",
+  "version": "1.0.0",
+  "description": "generates immutable model classes for java",
   "main": "lib/index.js",
+  "bin": {
+    "java-record-generator": "./lib/index.js"
+  },
   "scripts": {
     "lint": "eslint src test",
     "lint:fix": "eslint --fix src test",
@@ -13,8 +16,9 @@
     "gen-flow-files": "flow gen-flow-files src/ --out-dir lib",
     "build": "rimraf lib && babel src --out-dir lib",
     "test": "NODE_ENV=production BABEL_ENV=test nyc --reporter=lcov --reporter=text mocha $npm_package_config_mocha",
-    "prepublish": "npm run lint && flow && npm test && npm run build && npm run gen-flow-files",
-    "postpublish": "git tag -a v$npm_package_version -m v$npm_package_version && git push origin v$npm_package_version"
+    "prepublish": "npm run lint && flow && npm run build",
+    "postpublish": "git tag -a v$npm_package_version -m v$npm_package_version && git push origin v$npm_package_version",
+    "start": "babel-node src/index.js"
   },
   "config": {
     "mocha": "--compilers js:babel-core/register ./test/**/*.js"
@@ -31,7 +35,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jedwards1211/es2015-library-skeleton.git"
+    "url": "git+https://github.com/jedwards1211/java-record-generator.git"
   },
   "keywords": [
     "es2015"
@@ -39,9 +43,9 @@
   "author": "Andy Edwards",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/jedwards1211/es2015-library-skeleton/issues"
+    "url": "https://github.com/jedwards1211/java-record-generator/issues"
   },
-  "homepage": "https://github.com/jedwards1211/es2015-library-skeleton#readme",
+  "homepage": "https://github.com/jedwards1211/java-record-generator#readme",
   "devDependencies": {
     "babel-cli": "^6.16.0",
     "babel-core": "^6.17.0",
@@ -69,7 +73,12 @@
     "pre-commit": "^1.1.3",
     "rimraf": "^2.5.4"
   },
-  "dependencies": {},
+  "dependencies": {
+    "chokidar": "^1.6.1",
+    "lodash.map": "^4.6.0",
+    "lodash.some": "^4.6.0",
+    "lodash.upperfirst": "^4.3.1"
+  },
   "pre-commit": [
     "lint",
     "flow"

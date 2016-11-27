@@ -1,5 +1,8 @@
 {
   "extends": [
     "eslint-config-andy", "eslint-config-andy-flow"
-  ]
+  ],
+  "env": {
+    "node": true
+  }
 }
