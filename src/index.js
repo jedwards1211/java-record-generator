@@ -243,7 +243,7 @@ public class ${name} {
 
 function getPackageName(file: string): string {
   const dir = path.dirname(file)
-  return dir.substring(/\b(org|com|javax?|apple|sun|jdk)\b/.exec(dir).index).replace(/[\/\\]/g, '.')
+  return dir.substring(/\b(org|com)\b/.exec(dir).index).replace(/[\/\\]/g, '.')
 }
 
 function generateRecordForFile(file: string) {
