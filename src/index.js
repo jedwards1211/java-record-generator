@@ -229,7 +229,6 @@ export function generateRecord(record: Record, options?: Options = {}): string {
   const imports = [
     ...(record.imports || []),
     'java.util.function.Consumer',
-    'java.util.function.Function',
   ]
 
   const importObjects = some(record.fields, (field: Field): boolean =>
