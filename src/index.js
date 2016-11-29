@@ -17,9 +17,12 @@ function generateRecordForFile(file: string) {
     record.name = /(\w+)\.record\.js$/.exec(file)[1]
     record.pkg = getPackageName(file)
     record.sourceFile = path.basename(file)
-    const generateRecord = require(path.join(__dirname, record.type || 'pojo')).default
-    const javaFile = file.replace(/\.record\.js$/, '.java')
-    fs.writeFile(javaFile, generateRecord(record), 'utf8')
+    const {generateRecord, generateMutableRecord} = require(path.join(__dirname, record.type || 'pojo'))
+
+    const recordJavaFile = file.replace(/\.record\.js$/, '.java')
+    const mutableRecordJavaFile = path.join(path.dirname(file), 'Mutable' + path.basename(recordJavaFile))
+    fs.writeFile(recordJavaFile, generateRecord(record), 'utf8')
+    fs.writeFile(mutableRecordJavaFile, generateMutableRecord(record), 'utf8')
   } catch (error) {
     console.error(error.stack) // eslint-disable-line no-console
   }
