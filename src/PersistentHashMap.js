@@ -254,13 +254,7 @@ public final class ${name} {
 	}
 
 	public <T> ${name} update(String key, Function<? super T, ? extends T> updater) {
-		@SuppressWarnings("unchecked")
-		T oldValue = (T) data.get(key);
-		T newValue = updater.apply(oldValue);
-		if (Objects.equals(oldValue, newValue)) {
-			return this;
-		}
-		return set(key, newValue);
+		return set(key, updater.apply(get(key)));
 	}
 
 	@Override
@@ -350,9 +344,17 @@ public final class Mutable${name} {
 	public <T> T get(String key) {
 		return (T) persist().get(key);
 	}
+	
+	private static boolean equals(Object a, Object b) {
+	  if (a instanceof Number || b instanceof Number ||
+	    a instanceof String || b instanceof String) {
+	    return Objects.equals(a, b);
+	  }
+	  return a == b;
+	}
 
 	public Mutable${name} set(String key, Object value) {
-		if (persisted != null && Objects.equals(value, persisted.get(key))) {
+		if (persisted != null && equals(value, persisted.get(key))) {
 			return this;
 		}
 		persisted = null;
@@ -364,7 +366,7 @@ public final class Mutable${name} {
     @SuppressWarnings("unchecked")
 		T oldValue = (T) persist().get(key);
 		T newValue = updater.apply(oldValue);
-		if (Objects.equals(oldValue, newValue)) {
+		if (equals(oldValue, newValue)) {
 			return this;
 		}
 		data.plus(key, newValue);
