@@ -50,12 +50,8 @@ const shouldSetTests = {
 }
 
 function generateDataFields(record: Record): string {
-  return map(record.fields, ({type, description, initValue}: Field, name: string): string => `
-    /**
-     * ${description || name}.
-     */
-    ${type} ${name}${initValue !== undefined ? ` = ${initValue}` : ''};
-  `).join('')
+  return map(record.fields, ({type, description, initValue}: Field, name: string): string =>
+    `${type} ${name}${initValue !== undefined ? ` = ${initValue}` : ''};`).join('\n    ')
 }
 
 function getterName(name: string, {type, getterName}: Field): string {
@@ -319,6 +315,7 @@ public final class ${name} {
     static final Data initial = new Data();
     
     ${generateDataFields(record)}
+    
     @Override
     public Data clone() {
       try {
