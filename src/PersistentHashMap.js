@@ -5,6 +5,7 @@ import map from 'lodash.map'
 import upperFirst from 'lodash.upperfirst'
 import some from 'lodash.some'
 import pickBy from 'lodash.pickby'
+import size from 'lodash.size'
 
 import {homepage} from '../package.json'
 
@@ -51,7 +52,8 @@ function getterName(name: string, {type, getterName}: Field): string {
 }
 
 function generateKeys(record: Record): string {
-  return map(record.fields, (field: Field, name: string): string => {
+  const nonFlagFields = pickBy(record.fields, field => field.type !== 'flag')
+  return map(nonFlagFields, (field: Field, name: string): string => {
     const {description} = field
     return `
   /**
@@ -63,7 +65,8 @@ function generateKeys(record: Record): string {
 }
 
 function generateInitializers(record: Record): string {
-  const fieldsWithInitValue = pickBy(record.fields, ({initValue}: Field): boolean => Boolean(initValue))
+  const nonFlagFields = pickBy(record.fields, field => field.type !== 'flag')
+  const fieldsWithInitValue = pickBy(nonFlagFields, ({initValue}: Field): boolean => Boolean(initValue))
   if (!Object.keys(fieldsWithInitValue).length) {
     return `
   static final PersistentHashMap<String, Object> initialData = PersistentHashMap.emptyMap();
@@ -88,13 +91,13 @@ ${initializers}
 function generateGetters(record: Record, className?: string = record.name): string {
   return map(record.fields, (field: Field, name: string): string => {
     const {type, description} = field
-    const key = className === record.name ? name : `${record.name}.${name}`
+    const prefix = className === record.name ? '' : record.name + '.'
     return `
   /**
    * @return ${description || name}.
    */
-  public ${type} ${getterName(name, field)}() {
-    return get(${key});
+  public ${type === 'flag' ? 'boolean' : type} ${getterName(name, field)}() {
+    return ${type === 'flag' ? `getFlag(${prefix}Flags.${name})` : `get(${prefix}${name})`};
   }
   `
   }).join('')
@@ -103,6 +106,7 @@ function generateGetters(record: Record, className?: string = record.name): stri
 function generateSetters(record: Record, className?: string = record.name): string {
   return map(record.fields, (field: Field, name: string): string => {
     const {type, description} = field
+    const prefix = className === record.name ? '' : record.name + '.'
     return `
   /**
    * Sets ${description || name}.
@@ -111,8 +115,8 @@ function generateSetters(record: Record, className?: string = record.name): stri
    * 
    * @return this {@code ${record.name}} if {@code ${name}} is unchanged, or a copy with the new {@code ${name}}.
    */
-  public ${className} set${upperFirst(name)}(${type} ${name}) {
-    return set(${record.name}.${name}, ${name});
+  public ${className} set${upperFirst(name)}(${type === 'flag' ? 'boolean' : type} ${name}) {
+    return ${type === 'flag' ? `setFlag(${prefix}Flags.${name}, ${name})` : `set(${record.name}.${name}, ${name})`};
   }
   `
   }).join('')
@@ -121,8 +125,8 @@ function generateSetters(record: Record, className?: string = record.name): stri
 function generateUpdaters(record: Record, className?: string = record.name): string {
   return map(record.fields, (field: Field, name: string): string => {
     const {type, description} = field
-    const box = boxes[type] || type
-    const key = className === record.name ? name : `${record.name}.${name}`
+    const box = type === 'flag' ? 'Boolean' : boxes[type] || type
+    const prefix = className === record.name ? '' : record.name + '.'
     return `
   /**
    * Updates ${description || name}.
@@ -132,7 +136,7 @@ function generateUpdaters(record: Record, className?: string = record.name): str
    * @return this {@code ${className}} if {@code ${name}} is unchanged, or a copy with the updated {@code ${name}}.
    */
   public ${className} update${upperFirst(name)}(Function<${box}, ${box}> updater) {
-    return update(${key}, updater);
+    return ${type === 'flag' ? `updateFlag(${prefix}Flags.${name}, updater)` : `update(${prefix}${name}, updater)`};
   }
   `
   }).join('')
@@ -141,15 +145,15 @@ function generateUpdaters(record: Record, className?: string = record.name): str
 function generateProperties(record: Record): string {
   let properties = map(record.fields, (field: Field, name: string): string => {
     const {type, description} = field
-    const box = boxes[type] || type
+    const box = type === 'flag' ? 'Boolean' : boxes[type] || type
     return `
     /**
      * ${description || name}
      */
     public static final DefaultProperty<${record.name}, ${box}> ${name} = create(
       "${name}", ${/^[^<]+/.exec(box)[0]}.class,
-      r -> r.get(${record.name}.${name}),
-      (m, v) -> m.set(${record.name}.${name}, v)
+      r -> ${type === 'flag' ? `r.getFlag(Flags.${name})` : `r.get(${record.name}.${name})`},
+      (m, v) -> ${type === 'flag' ? `m.setFlag(Flags.${name}, v)` : `m.set(${record.name}.${name}, v)`}
     );
     `
   }).join('\n')
@@ -176,6 +180,45 @@ function generateProperties(record: Record): string {
   `
 }
 
+function generateFlagMethods(record: Record, className?: string = record.name): string {
+  const prefix = className === record.name ? '' : record.name + '.'
+  return `
+  public boolean getFlag(long flag) {
+    return ((long) get(${prefix}flags) & flag) != 0;
+  }
+  
+  public ${className} setFlag(long flag, boolean value) {
+    return update(${prefix}flags, bits -> value ? ((long) bits) | flag : ((long) bits) & ~flag); 
+  }
+  
+  public ${className} updateFlag(long flag, Function<Boolean, Boolean> updater) {
+    return setFlag(flag, updater.apply(getFlag(flag)));
+  }
+  `
+}
+
+function generateFlags(record: Record, className?: string = record.name): string {
+  const flagFields = pickBy(record.fields, field => field.type === 'flag')
+  if (!size(flagFields)) return ''
+  let index = 0
+  let flags = map(flagFields, (field: Field, name: string): string => {
+    const {description} = field
+    return `
+    /**
+     * ${description || name}
+     */
+    public static final long ${name} = ${1 << index++};
+    `
+  }).join('\n')
+
+  return `
+  public static final class Flags {
+    ${flags}
+  }
+  ${generateFlagMethods(record, className)}
+  `
+}
+
 type Options = {
   tab?: string,
 }
@@ -191,6 +234,16 @@ export function generateRecord(record: Record, options?: Options = {}): string {
     'java.util.Objects',
     'com.github.krukow.clj_lang.PersistentHashMap',
   ]
+
+  const flagFields = pickBy(record.fields, field => field.type === 'flag')
+  if (size(flagFields)) {
+    const fields = record.fields || (record.fields = {})
+    fields.flags = {
+      name: 'flags',
+      type: 'long',
+      initValue: map(flagFields, (field: Field, name: string) => `Flags.${name}`).join(' | ') || '0',
+    }
+  }
 
   if (some(record.fields, (field: Field): boolean => Boolean(field.initValue))) {
     imports.push('com.github.krukow.clj_ds.TransientMap')
@@ -208,6 +261,7 @@ export function generateRecord(record: Record, options?: Options = {}): string {
  */`
 
   const properties = record.generateProperties ? generateProperties(record) : ''
+  const flags = generateFlags(record)
 
   return `/**
  * Generated from {@code ${sourceFile}} by java-record-generator on ${new Date().toLocaleString()}.
@@ -223,6 +277,7 @@ public final class ${name} {
   ${generateKeys(record)}
   ${generateInitializers(record)}
   ${properties} 
+  ${flags}
 
 	private final PersistentHashMap<String, Object> data;
 	
@@ -298,6 +353,19 @@ export function generateMutableRecord(record: Record, options?: Options = {}): s
     'java.util.Objects',
     'java.util.function.Function',
   ]
+
+  let flagMethods = ''
+
+  const flagFields = pickBy(record.fields, field => field.type === 'flag')
+  if (size(flagFields)) {
+    const fields = record.fields || (record.fields = {})
+    fields.flags = {
+      name: 'flags',
+      type: 'long',
+      initValue: map(flagFields, (field: Field, name: string) => `Flags.${name}`).join(' | ') || '0',
+    }
+    flagMethods = generateFlagMethods(record, `Mutable${name}`)
+  }
 
   return `/**
  * Generated from {@code ${sourceFile}} by java-record-generator on ${new Date().toLocaleString()}.
@@ -382,6 +450,7 @@ public final class Mutable${name} {
 		return this;
 	}
 	
+	${flagMethods}
   ${generateGetters(record, `Mutable${name}`)}
   ${generateSetters(record, `Mutable${name}`)}
   ${record.generateUpdaters ? generateUpdaters(record, `Mutable${name}`) : ''}
