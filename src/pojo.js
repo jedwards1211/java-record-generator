@@ -182,7 +182,7 @@ const isNotEqualTests = {
   int: (name: string): string => `if (${name} != other.${name}) return false;`,
   long: (name: string): string => `if (${name} != other.${name}) return false;`,
   float: (name: string): string => `if (Float.floatToIntBits(${name}) != Float.floatToIntBits(other.${name})) return false;`,
-  double: (name: string): string => `if (Double.doubleToLongBits != Double.doubleToLongBits(other.${name})) return false;`,
+  double: (name: string): string => `if (Double.doubleToLongBits(${name}) != Double.doubleToLongBits(other.${name})) return false;`,
 }
 
 function generateEquals(record: Record): string {
